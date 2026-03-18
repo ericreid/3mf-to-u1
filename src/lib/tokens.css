@@ -1,0 +1,21 @@
+:root {
+    --bg-deep: #F0F2F4;
+    --bg-base: #FFFFFF;
+    --bg-raised: #F5F6F7;
+    --bg-surface: #ECEFF1;
+    --bg-hover: #E2E6EA;
+    --border: #D4D9DE;
+    --border-light: #BDC4CB;
+    --text-primary: #1A1A1A;
+    --text-secondary: #4A5560;
+    --text-dim: #8A929A;
+    --accent: #00B4D8;
+    --accent-dim: rgba(0, 180, 216, 0.08);
+    --accent-hover: #009ABB;
+    --charcoal: #333333;
+    --amber: #C4850C;
+    --amber-dim: rgba(196, 133, 12, 0.08);
+    --red: #D04040;
+    --red-dim: rgba(208, 64, 64, 0.06);
+    --radius: 4px;
+}

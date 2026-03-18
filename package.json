@@ -1,0 +1,16 @@
+{
+  "name": "3mf-to-u1",
+  "version": "1.0.0",
+  "description": "Chrome extension to convert any .3mf file to Snapmaker U1 format",
+  "private": true,
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "extract": "python3 scripts/extract-templates.py"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0",
+    "jszip": "^3.10.1",
+    "vitest": "^3.0.0"
+  }
+}

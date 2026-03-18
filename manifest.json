@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "3MF to U1 - Universal Snapmaker Converter",
+  "version": "1.0.0",
+  "description": "Converts .3mf downloads from any site to Snapmaker U1 format. Supports Bambu Lab, PrusaSlicer, and standard 3MF.",
+
+  "permissions": [
+    "downloads",
+    "storage"
+  ],
+
+  "host_permissions": [
+    "<all_urls>"
+  ],
+
+  "background": {
+    "service_worker": "src/service-worker.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://makerworld.com/*",
+        "https://*.makerworld.com/*",
+        "https://www.printables.com/*",
+        "https://www.thingiverse.com/*"
+      ],
+      "js": ["src/content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "options_page": "src/options/options.html",
+
+  "action": {
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    },
+    "default_title": "3MF to U1 Converter"
+  },
+
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": ["vendor/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

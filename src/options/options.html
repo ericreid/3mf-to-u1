@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3MF to U1 - Settings</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+
+<div class="options-shell">
+    <h1>3MF to U1 Settings</h1>
+
+    <div class="option-group">
+        <label class="option-label" for="interception-mode">Interception Mode</label>
+        <select id="interception-mode" class="option-select">
+            <option value="auto">Auto (try click intercept, fall back to post-process)</option>
+            <option value="click">Click Intercept (Mode A)</option>
+            <option value="download">Post-Process Downloads (Mode B)</option>
+        </select>
+        <p class="option-desc">How the extension captures .3mf downloads.</p>
+    </div>
+
+    <div class="option-group">
+        <label class="option-label" for="default-type">Default Filament Type</label>
+        <select id="default-type" class="option-select">
+            <option value="PLA">PLA</option>
+            <option value="PETG-HF">PETG-HF</option>
+            <option value="ABS">ABS</option>
+            <option value="TPU">TPU</option>
+        </select>
+        <p class="option-desc">Default filament type for new slots.</p>
+    </div>
+
+    <div class="option-group">
+        <label class="option-check">
+            <input type="checkbox" id="auto-convert">
+            <span>Auto-convert single-color files</span>
+        </label>
+        <p class="option-desc">Skip the mapping UI when a file has only one filament color.</p>
+    </div>
+
+    <div id="status" class="status"></div>
+</div>
+
+<script src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+@import url('../lib/tokens.css');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    padding: 2rem;
+    -webkit-font-smoothing: antialiased;
+}
+
+.options-shell {
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.01em;
+}
+
+.option-group {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.option-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.option-select {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 0.85rem;
+    width: 100%;
+    padding: 0.5rem;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+}
+.option-select:focus { outline: none; border-color: var(--accent); }
+
+.option-desc {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    margin-top: 0.4rem;
+}
+
+.option-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+.option-check input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 16px;
+    height: 16px;
+}
+
+.status {
+    font-size: 0.85rem;
+    color: var(--accent);
+    min-height: 1.2em;
+}

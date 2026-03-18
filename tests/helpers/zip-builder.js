@@ -1,0 +1,164 @@
+/**
+ * Programmatic ZIP fixture builder for tests.
+ * Builds minimal .3mf archives with just the metadata files needed for testing.
+ */
+import JSZip from 'jszip';
+
+/**
+ * Build a Bambu-style ZIP with slice_info.config containing <filament> XML nodes.
+ * @param {Array<{id: string, color: string, type: string}>} filaments
+ * @param {{hasSupport?: boolean, printerModel?: string}} options
+ */
+export async function buildBambuSliceInfoZip(filaments, options = {}) {
+  const zip = new JSZip();
+
+  const filamentXml = filaments.map(f =>
+    `<filament id="${f.id}" color="${f.color}" type="${f.type}" used_m="1.5" used_g="4.2" />`
+  ).join('\n    ');
+
+  const printerModel = options.printerModel || 'Bambu Lab X1 Carbon';
+  zip.file('Metadata/slice_info.config', `<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <header>
+    <header_item key="X-BBL-Client-Type" value="slicer" />
+    <header_item key="printer_model_id" value="${printerModel}" />
+  </header>
+  <plate>
+    ${filamentXml}
+  </plate>
+</config>`);
+
+  // Add minimal model_settings.config with extruder mappings
+  const extruderXml = filaments.map(f =>
+    `  <object id="${100 + parseInt(f.id)}"><metadata key="extruder" value="${f.id}" /></object>`
+  ).join('\n');
+  zip.file('Metadata/model_settings.config', `<?xml version="1.0" encoding="UTF-8"?>
+<config>
+${extruderXml}
+</config>`);
+
+  // Add project_settings.config (real Bambu files always have this)
+  zip.file('Metadata/project_settings.config', JSON.stringify({
+    filament_colour: filaments.map(f => f.color),
+    filament_type: filaments.map(f => f.type),
+    filament_settings_id: filaments.map(() => 'Generic PLA'),
+  }));
+
+  // Add dummy geometry file
+  zip.file('3D/3dmodel.model', '<model />');
+
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
+
+/**
+ * Build a Bambu-style ZIP with project_settings.config JSON (no slice_info filaments).
+ */
+export async function buildBambuSettingsZip(filaments, options = {}) {
+  const zip = new JSZip();
+
+  // slice_info.config exists but has no <filament> nodes
+  zip.file('Metadata/slice_info.config', `<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <header>
+    <header_item key="X-BBL-Client-Type" value="slicer" />
+  </header>
+  <plate />
+</config>`);
+
+  const settings = {
+    filament_colour: filaments.map(f => f.color),
+    filament_type: filaments.map(f => f.type),
+    filament_settings_id: filaments.map(() => 'Generic PLA'),
+  };
+
+  if (options.hasSupport) {
+    settings.different_settings_to_system = ['enable_support', '', '', ''];
+  }
+
+  zip.file('Metadata/project_settings.config', JSON.stringify(settings, null, 2));
+
+  const extruderXml = filaments.map((f, i) =>
+    `  <object id="${100 + i}"><metadata key="extruder" value="${i + 1}" /></object>`
+  ).join('\n');
+  zip.file('Metadata/model_settings.config', `<?xml version="1.0" encoding="UTF-8"?>
+<config>
+${extruderXml}
+</config>`);
+
+  zip.file('3D/3dmodel.model', '<model />');
+
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
+
+/**
+ * Build a PrusaSlicer-style ZIP with INI config.
+ */
+export async function buildPrusaZip(colors, types, options = {}) {
+  const zip = new JSZip();
+
+  let config = '';
+  if (colors.length) config += `filament_colour = ${colors.join(';')}\n`;
+  if (types.length) config += `filament_type = ${types.join(';')}\n`;
+  if (options.hasSupport) config += 'support_material = 1\n';
+
+  zip.file('Metadata/Slic3r_PE.config', config);
+  zip.file('3D/3dmodel.model', '<model />');
+
+  // Add model_settings for converter tests
+  const extruderXml = colors.map((_, i) =>
+    `  <object id="${100 + i}"><metadata key="extruder" value="${i + 1}" /></object>`
+  ).join('\n');
+  zip.file('Metadata/model_settings.config', `<?xml version="1.0" encoding="UTF-8"?>
+<config>
+${extruderXml}
+</config>`);
+
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
+
+/**
+ * Build a standard 3MF ZIP with basematerials in the model XML.
+ */
+export async function build3mfZip(materials) {
+  const zip = new JSZip();
+
+  const baseXml = materials.map(m =>
+    `      <base name="${m.name}" displaycolor="${m.color}" />`
+  ).join('\n');
+
+  zip.file('3D/3dmodel.model', `<?xml version="1.0" encoding="UTF-8"?>
+<model>
+  <resources>
+    <basematerials id="1">
+${baseXml}
+    </basematerials>
+  </resources>
+</model>`);
+
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
+
+/**
+ * Build an empty ZIP with no recognized metadata.
+ */
+export async function buildEmptyZip() {
+  const zip = new JSZip();
+  zip.file('3D/3dmodel.model', '<model />');
+  zip.file('dummy.txt', 'hello');
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
+
+/**
+ * Build a ZIP with a path traversal entry for security testing.
+ */
+export async function buildTraversalZip() {
+  const zip = new JSZip();
+  zip.file('Metadata/slice_info.config', `<?xml version="1.0" encoding="UTF-8"?>
+<config><plate><filament id="1" color="#FF0000" type="PLA" /></plate></config>`);
+  zip.file('Metadata/project_settings.config', '{}');
+  zip.file('Metadata/model_settings.config', `<?xml version="1.0" encoding="UTF-8"?><config></config>`);
+  zip.file('3D/3dmodel.model', '<model />');
+  zip.file('../evil.txt', 'should be excluded');
+  zip.file('/absolute.txt', 'should be excluded');
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
