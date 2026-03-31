@@ -5,7 +5,11 @@
  * Analysis and conversion happen in the popup (which has DOM access).
  */
 
-importScripts('lib/file-store.js');
+// In Chrome, service worker loads file-store.js via importScripts.
+// In Firefox, background.scripts loads it separately (importScripts doesn't exist).
+if (typeof importScripts === 'function') {
+  importScripts('lib/file-store.js');
+}
 
 // Track in-flight URLs to prevent Mode A + Mode B double interception
 const IN_FLIGHT_TTL = 30000;

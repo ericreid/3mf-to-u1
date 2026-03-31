@@ -27,19 +27,29 @@ const INCLUDE = [
 const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));
 const version = process.argv[2] || manifest.version;
 
-// Firefox-specific manifest additions
-const FIREFOX_ADDITIONS = {
-  browser_specific_settings: {
+// Firefox-specific manifest modifications
+function buildFirefoxManifest(base) {
+  const ff = { ...base };
+
+  // Firefox uses background.scripts instead of service_worker
+  ff.background = { scripts: ['src/lib/file-store.js', 'src/service-worker.js'] };
+
+  // Add gecko settings
+  ff.browser_specific_settings = {
     gecko: {
       id: '3mf-to-u1@ericreid.com',
-      strict_min_version: '121.0',
+      strict_min_version: '109.0',
     },
-  },
-  options_ui: {
+  };
+
+  // Firefox prefers options_ui
+  ff.options_ui = {
     page: 'src/options/options.html',
     open_in_tab: true,
-  },
-};
+  };
+
+  return ff;
+}
 
 function copyRecursive(src, dest) {
   const stat = fs.statSync(src);
@@ -92,7 +102,7 @@ function build() {
   // Firefox
   const firefoxZip = `3mf-to-u1-firefox-v${version}.zip`;
   console.log(`Building ${firefoxZip}...`);
-  buildZip(firefoxZip, { ...manifest, ...FIREFOX_ADDITIONS });
+  buildZip(firefoxZip, buildFirefoxManifest(manifest));
 
   console.log(`\nDone. Output in dist/:`);
   console.log(`  ${chromeZip}`);
