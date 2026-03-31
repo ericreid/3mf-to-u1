@@ -90,10 +90,12 @@ function looks3mf(downloadItem) {
   const filename = (downloadItem.filename || '').toLowerCase();
   const mime = downloadItem.mime || '';
 
+  // Check URL path (before query string) for .3mf extension, not just anywhere in the URL
+  let urlPath = '';
+  try { urlPath = new URL(url).pathname.toLowerCase(); } catch {}
+
   return filename.endsWith('.3mf') ||
-    url.includes('.3mf') ||
-    mime.includes('3mf') ||
-    mime === 'application/zip' && url.includes('3mf');
+    urlPath.endsWith('.3mf');
 }
 
 /** Check if the download URL is a blob: from our own extension (skip self-generated downloads). */
