@@ -98,7 +98,7 @@ function looks3mf(downloadItem) {
 
 /** Check if the download URL is a blob: from our own extension (skip self-generated downloads). */
 function isOwnDownload(url) {
-  return url.startsWith('blob:chrome-extension://');
+  return url.startsWith('blob:chrome-extension://') || url.startsWith('blob:moz-extension://');
 }
 
 function openPopup() {
