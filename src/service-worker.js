@@ -5,7 +5,11 @@
  * Analysis and conversion happen in the popup (which has DOM access).
  */
 
-importScripts('lib/file-store.js');
+// In Chrome, service worker loads file-store.js via importScripts.
+// In Firefox, background.scripts loads it separately (importScripts doesn't exist).
+if (typeof importScripts === 'function') {
+  importScripts('lib/file-store.js');
+}
 
 // Track in-flight URLs to prevent Mode A + Mode B double interception
 const IN_FLIGHT_TTL = 30000;
@@ -90,15 +94,17 @@ function looks3mf(downloadItem) {
   const filename = (downloadItem.filename || '').toLowerCase();
   const mime = downloadItem.mime || '';
 
+  // Check URL path (before query string) for .3mf extension, not just anywhere in the URL
+  let urlPath = '';
+  try { urlPath = new URL(url).pathname.toLowerCase(); } catch {}
+
   return filename.endsWith('.3mf') ||
-    url.includes('.3mf') ||
-    mime.includes('3mf') ||
-    mime === 'application/zip' && url.includes('3mf');
+    urlPath.endsWith('.3mf');
 }
 
 /** Check if the download URL is a blob: from our own extension (skip self-generated downloads). */
 function isOwnDownload(url) {
-  return url.startsWith('blob:chrome-extension://');
+  return url.startsWith('blob:chrome-extension://') || url.startsWith('blob:moz-extension://');
 }
 
 function openPopup() {

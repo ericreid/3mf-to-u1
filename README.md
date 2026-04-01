@@ -1,6 +1,6 @@
 # 3MF to U1
 
-Chrome extension that converts `.3mf` files to Snapmaker U1 format. Keeps your multi-color painting and filament assignments intact.
+Browser extension (Chrome + Firefox) that converts `.3mf` files to Snapmaker U1 format. Keeps your multi-color painting and filament assignments intact.
 
 You can use it two ways:
 - **Automatic**: Download a `.3mf` from any site and the extension intercepts it, converts it, saves the U1 version
@@ -43,25 +43,29 @@ If the file is already set up for U1, the extension tells you. You can download 
 
 ## Installation
 
-### Chrome Web Store
+### Chrome
 
-Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/3mf-to-u1/doldcglleomcokhogkmlmdgfbcnaaenk).
+Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/3mf-to-u1/doldcglleomcokhogkmlmdgfbcnaaenk), or grab the Chrome ZIP from the [Releases page](https://github.com/ericreid/3mf-to-u1/releases/latest) and load it manually:
 
-### Manual Install
+1. Unzip it
+2. Open `chrome://extensions`
+3. Turn on **Developer mode** (top right)
+4. Click **Load unpacked** and select the unzipped folder
 
-1. Grab the latest ZIP from the [Releases page](https://github.com/ericreid/3mf-to-u1/releases/latest)
-2. Unzip it
-3. Open `chrome://extensions` in Chrome
-4. Turn on **Developer mode** (top right)
-5. Click **Load unpacked** and select the unzipped folder
+### Firefox
+
+Grab the Firefox ZIP from the [Releases page](https://github.com/ericreid/3mf-to-u1/releases/latest) and load it:
+
+1. Open `about:debugging#/runtime/this-firefox`
+2. Click **Load Temporary Add-on**
+3. Select the downloaded ZIP file
 
 ### From Source
 
 ```bash
 git clone https://github.com/ericreid/3mf-to-u1.git
+npm run build  # produces dist/3mf-to-u1-chrome-vX.X.X.zip and dist/3mf-to-u1-firefox-vX.X.X.zip
 ```
-
-Then follow steps 3-6 above, pointing Chrome at the cloned `3mf-to-u1` folder.
 
 ### Permissions
 
@@ -128,7 +132,7 @@ Content Script (src/content-script.js)
 
 ```
 3mf-to-u1/
-├── manifest.json              # Chrome Extension Manifest V3
+├── manifest.json              # WebExtension Manifest V3
 ├── src/
 │   ├── service-worker.js      # Background: download interception + file fetching
 │   ├── content-script.js      # Click interception on supported sites
@@ -180,5 +184,4 @@ PRs and issues are welcome.
 
 Things that could use attention:
 - Testing with more slicer formats and model sites
-- Chrome Web Store packaging
-- Firefox/Edge port
+- Edge port

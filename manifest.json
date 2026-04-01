@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "3MF to U1 - Universal Snapmaker Converter",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Converts .3mf downloads from any site to Snapmaker U1 format. Supports Bambu Lab, PrusaSlicer, and standard 3MF.",
 
   "permissions": [
