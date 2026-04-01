@@ -56,9 +56,9 @@ Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/3mf
 
 Grab the Firefox ZIP from the [Releases page](https://github.com/ericreid/3mf-to-u1/releases/latest) and load it:
 
-1. Unzip it
-2. Open `about:debugging#/runtime/this-firefox`
-3. Click **Load Temporary Add-on** and select `manifest.json` from the unzipped folder
+1. Open `about:debugging#/runtime/this-firefox`
+2. Click **Load Temporary Add-on**
+3. Select the downloaded ZIP file
 
 ### From Source
 
