@@ -1,6 +1,6 @@
 {
   "name": "3mf-to-u1",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Browser extension to convert any .3mf file to Snapmaker U1 format",
   "private": true,
   "scripts": {
