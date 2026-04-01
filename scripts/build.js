@@ -38,11 +38,16 @@ function buildFirefoxManifest(base) {
   ff.browser_specific_settings = {
     gecko: {
       id: '3mf-to-u1@ericreid.com',
-      strict_min_version: '109.0',
+      strict_min_version: '126.0',
+      data_collection_permissions: {
+        tppc_purpose: [],
+        ur_purpose: [],
+      },
     },
   };
 
-  // Firefox prefers options_ui
+  // Remove options_page (Chrome-only), use options_ui for Firefox
+  delete ff.options_page;
   ff.options_ui = {
     page: 'src/options/options.html',
     open_in_tab: true,
