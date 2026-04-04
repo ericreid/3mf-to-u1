@@ -54,7 +54,7 @@ Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/3mf
 
 ### Firefox
 
-Grab the Firefox ZIP from the [Releases page](https://github.com/ericreid/3mf-to-u1/releases/latest) and load it:
+Install from [Firefox Add-ons](https://addons.mozilla.org/addon/3mf-to-u1-converter/), or grab the Firefox ZIP from the [Releases page](https://github.com/ericreid/3mf-to-u1/releases/latest) and load it manually:
 
 1. Open `about:debugging#/runtime/this-firefox`
 2. Click **Load Temporary Add-on**
