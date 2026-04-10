@@ -135,9 +135,14 @@ async function parsePrusaFilaments(zip, normalizeColor) {
   }
   if (!configStr) return [];
 
-  // Parse INI-style config: look for filament_colour and filament_type
+  // Parse INI-style config: look for colors and filament_type.
+  // PrusaSlicer stores meaningful colors in extruder_colour, while filament_colour
+  // is often a generic placeholder. SuperSlicer is the opposite — extruder_colour
+  // is empty and filament_colour has the real values. Prefer extruder_colour.
   const filaments = [];
-  const colors = parseIniArray(configStr, 'filament_colour');
+  const extruderColors = parseIniArray(configStr, 'extruder_colour');
+  const filamentColors = parseIniArray(configStr, 'filament_colour');
+  const colors = extruderColors.length > 0 ? extruderColors : filamentColors;
   const types = parseIniArray(configStr, 'filament_type');
 
   if (colors.length > 0) {
@@ -165,7 +170,8 @@ async function parsePrusaFilaments(zip, normalizeColor) {
 /** Parse a semicolon-separated array value from INI-style config (PrusaSlicer format). */
 function parseIniArray(configStr, key) {
   // Match lines like: filament_colour = #FF0000;#00FF00;#0000FF
-  const regex = new RegExp('^' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*=\\s*(.+)$', 'm');
+  // SuperSlicer/PrusaSlicer prefix every line with "; " so account for that
+  const regex = new RegExp('^;?\\s*' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*=\\s*(.+)$', 'm');
   const match = configStr.match(regex);
   if (!match) return [];
   return match[1].split(';').map(s => s.trim()).filter(Boolean);
@@ -179,7 +185,7 @@ async function detectPrusaSupport(zip) {
     if (!file) continue;
     try {
       const str = await file.async('string');
-      const match = str.match(/^support_material\s*=\s*(\d+)/m);
+      const match = str.match(/^;?\s*support_material\s*=\s*(\d+)/m);
       if (match && match[1] !== '0') return true;
     } catch {}
   }

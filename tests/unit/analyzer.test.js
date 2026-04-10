@@ -70,6 +70,32 @@ describe('analyzer', () => {
       expect(result.filaments[2]).toEqual({ id: '3', color: '#0000FF', type: 'ABS' });
     });
 
+    it('prefers extruder_colour over filament_colour', async () => {
+      const buf = await buildPrusaZip(
+        ['#FF8000', '#FF8000', '#FF8000'],
+        ['PLA', 'PLA', 'PLA'],
+        { extruderColors: ['#000000', '#4BFC1F', '#FFFFFF'] }
+      );
+      const result = await analyze(buf);
+
+      expect(result.filaments).toHaveLength(3);
+      expect(result.filaments[0].color).toBe('#000000');
+      expect(result.filaments[1].color).toBe('#4BFC1F');
+      expect(result.filaments[2].color).toBe('#FFFFFF');
+    });
+
+    it('falls back to filament_colour when extruder_colour is absent', async () => {
+      const buf = await buildPrusaZip(
+        ['#FF0000', '#00FF00'],
+        ['PLA', 'PETG']
+      );
+      const result = await analyze(buf);
+
+      expect(result.filaments).toHaveLength(2);
+      expect(result.filaments[0].color).toBe('#FF0000');
+      expect(result.filaments[1].color).toBe('#00FF00');
+    });
+
     it('detects support from support_material setting', async () => {
       const buf = await buildPrusaZip(['#FF0000'], ['PLA'], { hasSupport: true });
       const result = await analyze(buf);
