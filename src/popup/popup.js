@@ -40,10 +40,21 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+/** Detect macOS (desktop, not iOS). */
+function isMacOS() {
+  // navigator.userAgentData is available in Chrome 90+ but not Firefox
+  if (navigator.userAgentData) {
+    return navigator.userAgentData.platform === 'macOS';
+  }
+  return /Mac/.test(navigator.userAgent) && !/iPhone|iPad|iPod/.test(navigator.userAgent);
+}
+
 /** Download a blob as a file, waiting for completion before returning. */
 async function downloadBlob(blob, filename) {
   const blobUrl = URL.createObjectURL(blob);
-  if (chrome.downloads) {
+  // On macOS, chrome.downloads.download() with a blob URL ignores the filename
+  // parameter and uses the blob UUID instead. Use the anchor-click approach there.
+  if (chrome.downloads && !isMacOS()) {
     // Register listener BEFORE starting download to avoid race where
     // download completes before listener is attached
     let downloadId = null;
