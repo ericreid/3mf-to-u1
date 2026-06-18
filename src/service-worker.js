@@ -16,9 +16,6 @@ const IN_FLIGHT_TTL = 30000;
 const IN_FLIGHT_MAX = 50;
 const inFlightUrls = new Set();
 
-// Maximum file size to process (bytes)
-const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200 MB
-
 function markInFlight(url) {
   if (inFlightUrls.size >= IN_FLIGHT_MAX) inFlightUrls.clear();
   inFlightUrls.add(url);
@@ -67,14 +64,12 @@ async function fetchAndStore(url, fallbackName) {
   const response = await fetch(url, { credentials: 'include' });
   if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
 
-  const contentLength = parseInt(response.headers.get('Content-Length') || '0', 10);
-  if (contentLength > MAX_FILE_SIZE) throw new Error(`File too large: ${(contentLength / 1048576).toFixed(1)} MB`);
-
   const originalName = extractNameFromDisposition(response.headers.get('Content-Disposition'))
     || sanitizeFilename(extractBaseName(fallbackName || url));
 
+  // No size cap — large detailed models are allowed through. If the file is too big
+  // for the browser to hold, fetch/arrayBuffer will reject and the caller shows an error.
   const arrayBuffer = await response.arrayBuffer();
-  if (arrayBuffer.byteLength > MAX_FILE_SIZE) throw new Error(`File too large: ${(arrayBuffer.byteLength / 1048576).toFixed(1)} MB`);
 
   await self.MWU1.storeFile(arrayBuffer, { url, originalName });
   return originalName;
@@ -107,14 +102,45 @@ function isOwnDownload(url) {
   return url.startsWith('blob:chrome-extension://') || url.startsWith('blob:moz-extension://');
 }
 
-function openPopup() {
+const POPUP_URL = chrome.runtime.getURL('src/popup/popup.html');
+
+/**
+ * Mark that this browser session has intentionally opened a popup. storage.session
+ * is in-memory and wiped on browser restart, so the popup uses the absence of this
+ * flag to detect (and self-close) windows the browser restored on relaunch.
+ */
+async function markSessionActive() {
+  try { await chrome.storage.session.set({ swSessionActive: true }); } catch {}
+}
+
+/** Close any open converter popup windows (single-window; also clears restored ones). */
+async function closeExistingPopups() {
+  try {
+    const wins = await chrome.windows.getAll({ populate: true, windowTypes: ['popup'] });
+    for (const win of wins) {
+      const isOurs = (win.tabs || []).some(t => (t.url || t.pendingUrl || '').startsWith(POPUP_URL));
+      if (isOurs) {
+        try { await chrome.windows.remove(win.id); } catch {}
+      }
+    }
+  } catch {}
+}
+
+function createPopupWindow() {
   chrome.windows.create({
-    url: chrome.runtime.getURL('src/popup/popup.html'),
+    url: POPUP_URL,
     type: 'popup',
     width: 560,
     height: 400,
     focused: true,
   });
+}
+
+/** Open a fresh converter popup, replacing any already-open one (no fetch). */
+async function openPopup() {
+  await markSessionActive();
+  await closeExistingPopups();
+  createPopupWindow();
 }
 
 function showBadgeProgress() {
@@ -145,6 +171,10 @@ chrome.downloads.onCreated.addListener(async (downloadItem) => {
 
   if (inFlightUrls.has(url)) return;
   if (isOwnDownload(url)) return;
+  // Only intercept genuinely new downloads. Skip items the browser is resuming or
+  // replaying (e.g. interrupted .3mf downloads re-created on startup), which would
+  // otherwise pop open converter windows the user never asked for.
+  if (downloadItem.state && downloadItem.state !== 'in_progress') return;
   if (!looks3mf(downloadItem)) return;
 
   console.log('[MWU1] Intercepting .3mf download');
@@ -168,11 +198,6 @@ chrome.downloads.onCreated.addListener(async (downloadItem) => {
 
 // ---- Message handling ----
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'conversion_complete') {
-    self.MWU1.clearFile().catch(() => {});
-    return false;
-  }
-
   if (message.action === 'intercept_download') {
     if (!sender.tab) return false;
     const url = message.url;
@@ -198,6 +223,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // ---- Extension action click — always open popup (shows drop zone if no pending file) ----
-chrome.action.onClicked.addListener(() => {
+// A toolbar click is a manual open, so drop any leftover pending download first;
+// otherwise the popup would re-process a stale file instead of showing the drop zone.
+chrome.action.onClicked.addListener(async () => {
+  try { await self.MWU1.clearFile(); } catch {}
   openPopup();
+});
+
+// ---- Browser relaunch cleanup ----
+// On startup, drop any pending file left from a previous session and close converter
+// windows the browser restored via session restore. The popup also self-closes when
+// it sees no swSessionActive marker; this is a best-effort backstop.
+chrome.runtime.onStartup.addListener(async () => {
+  try { await self.MWU1.clearFile(); } catch {}
+  await closeExistingPopups();
 });
