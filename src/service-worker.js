@@ -171,10 +171,14 @@ chrome.downloads.onCreated.addListener(async (downloadItem) => {
 
   if (inFlightUrls.has(url)) return;
   if (isOwnDownload(url)) return;
-  // Only intercept genuinely new downloads. Skip items the browser is resuming or
-  // replaying (e.g. interrupted .3mf downloads re-created on startup), which would
-  // otherwise pop open converter windows the user never asked for.
+  // Only intercept downloads the user just initiated. Skip items the browser is
+  // resuming or replaying at startup (e.g. interrupted .3mf downloads re-created on
+  // relaunch) — otherwise converter windows pop open for files nobody just clicked.
+  // Such items report a non-in_progress state and/or a startTime well in the past,
+  // whereas a fresh user download fires onCreated with startTime ~= now.
   if (downloadItem.state && downloadItem.state !== 'in_progress') return;
+  const startedAt = Date.parse(downloadItem.startTime || '');
+  if (!Number.isNaN(startedAt) && Date.now() - startedAt > 60000) return;
   if (!looks3mf(downloadItem)) return;
 
   console.log('[MWU1] Intercepting .3mf download');
