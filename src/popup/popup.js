@@ -33,13 +33,6 @@ function resizeToFit() {
   });
 }
 
-/** Escape a string for safe HTML text insertion. */
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
 /** Detect macOS (desktop, not iOS). */
 function isMacOS() {
   // navigator.userAgentData is available in Chrome 90+ but not Firefox
@@ -489,10 +482,6 @@ function buildSlotsStrip() {
   const usedSlots = getUsedSlots();
 
   outputSlots.forEach((slot, i) => {
-    const typeOpts = availableFilamentTypes.map(ft =>
-      `<option value="${escapeHtml(ft.type)}"${ft.type === slot.type ? ' selected' : ''}>${escapeHtml(ft.type)}</option>`
-    ).join('');
-
     const isOver = i >= PHYSICAL_SLOTS;
     const isUnused = !usedSlots.has(i);
     const classes = ['printer-slot'];
@@ -505,14 +494,50 @@ function buildSlotsStrip() {
     el.dataset.slotIdx = i;
     if (isUnused) el.title = 'No file colors routed here \u2014 this slot will be excluded from the output';
     else if (isOver) el.title = 'The U1 has 4 physical slots \u2014 this exceeds that limit';
-    el.innerHTML = `
-      <div class="slot-top">
-        <span class="slot-num">${i + 1}</span>
-        <button class="slot-remove ${outputSlots.length <= 1 ? 'gone' : ''}" data-slot="${i}" aria-label="Remove"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-      </div>
-      <button class="color-well-swatch slot-color-trigger" style="background:${escapeHtml(slot.color)}" data-slot="${i}" aria-label="Slot ${i + 1} color"></button>
-      <select class="type-select slot-type" data-slot="${i}" aria-label="Slot ${i + 1} type">${typeOpts}</select>
-      ${isUnused ? '<span class="slot-unused-tag">Unused</span>' : ''}`;
+
+    // Built via DOM APIs (not innerHTML) so untrusted colors/types can't inject markup.
+    const top = document.createElement('div');
+    top.className = 'slot-top';
+    const num = document.createElement('span');
+    num.className = 'slot-num';
+    num.textContent = i + 1;
+    const remove = document.createElement('button');
+    remove.className = 'slot-remove' + (outputSlots.length <= 1 ? ' gone' : '');
+    remove.dataset.slot = i;
+    remove.setAttribute('aria-label', 'Remove');
+    const removeIcon = document.createElement('i');
+    removeIcon.className = 'fa-solid fa-xmark';
+    removeIcon.setAttribute('aria-hidden', 'true');
+    remove.appendChild(removeIcon);
+    top.append(num, remove);
+
+    const swatch = document.createElement('button');
+    swatch.className = 'color-well-swatch slot-color-trigger';
+    swatch.style.background = slot.color;
+    swatch.dataset.slot = i;
+    swatch.setAttribute('aria-label', `Slot ${i + 1} color`);
+
+    const select = document.createElement('select');
+    select.className = 'type-select slot-type';
+    select.dataset.slot = i;
+    select.setAttribute('aria-label', `Slot ${i + 1} type`);
+    for (const ft of availableFilamentTypes) {
+      const opt = document.createElement('option');
+      opt.value = ft.type;
+      opt.textContent = ft.type;
+      if (ft.type === slot.type) opt.selected = true;
+      select.appendChild(opt);
+    }
+
+    el.append(top, swatch, select);
+
+    if (isUnused) {
+      const tag = document.createElement('span');
+      tag.className = 'slot-unused-tag';
+      tag.textContent = 'Unused';
+      el.appendChild(tag);
+    }
+
     strip.appendChild(el);
   });
 
@@ -593,22 +618,13 @@ function buildInputList() {
     const row = document.createElement('div');
     row.className = 'input-row';
 
-    const dotsHtml = outputSlots.map((s, si) => {
-      const active = slotMapping[fil.id] === si;
-      const unused = !active && !usedSlots.has(si);
-      return `<button class="slot-dot-btn ${active ? 'active' : ''} ${unused ? 'unused' : ''}" data-fil-id="${escapeHtml(fil.id)}" data-slot="${si}" aria-label="Assign to slot ${si + 1}" title="Slot ${si + 1}">
-        <span class="slot-dot-inner" style="background:${escapeHtml(s.color)}"></span>
-      </button>`;
-    }).join('');
+    const colorDot = document.createElement('span');
+    colorDot.className = 'input-color-dot';
+    colorDot.style.background = fil.color;
 
-    // Use textContent for fil.type to prevent XSS from crafted .3mf files
-    row.innerHTML = `
-      <span class="input-color-dot" style="background:${escapeHtml(fil.color)}"></span>
-      <span class="input-label"></span>
-      <i class="fa-solid fa-arrow-right input-arrow" aria-hidden="true"></i>
-      <span class="slot-selector">${dotsHtml}</span>`;
-    // Set label text safely via textContent (fil.type comes from untrusted ZIP XML)
-    const label = row.querySelector('.input-label');
+    // fil.type and fil.color come from untrusted ZIP XML — set via textContent.
+    const label = document.createElement('span');
+    label.className = 'input-label';
     const strong = document.createElement('strong');
     strong.textContent = fil.type || 'Unknown';
     label.appendChild(strong);
@@ -618,6 +634,29 @@ function buildInputList() {
     hexSpan.style.cssText = 'font-family:Source Code Pro,monospace;font-size:0.8rem;color:var(--text-dim);margin-left:0.25rem';
     label.appendChild(hexSpan);
 
+    const arrow = document.createElement('i');
+    arrow.className = 'fa-solid fa-arrow-right input-arrow';
+    arrow.setAttribute('aria-hidden', 'true');
+
+    const selector = document.createElement('span');
+    selector.className = 'slot-selector';
+    outputSlots.forEach((s, si) => {
+      const active = slotMapping[fil.id] === si;
+      const unused = !active && !usedSlots.has(si);
+      const btn = document.createElement('button');
+      btn.className = 'slot-dot-btn' + (active ? ' active' : '') + (unused ? ' unused' : '');
+      btn.dataset.filId = fil.id;
+      btn.dataset.slot = si;
+      btn.setAttribute('aria-label', `Assign to slot ${si + 1}`);
+      btn.title = `Slot ${si + 1}`;
+      const inner = document.createElement('span');
+      inner.className = 'slot-dot-inner';
+      inner.style.background = s.color;
+      btn.appendChild(inner);
+      selector.appendChild(btn);
+    });
+
+    row.append(colorDot, label, arrow, selector);
     list.appendChild(row);
   });
 
