@@ -49,6 +49,20 @@ function isMacOS() {
   return /Mac/.test(navigator.userAgent) && !/iPhone|iPad|iPod/.test(navigator.userAgent);
 }
 
+/**
+ * Close this popup window reliably. window.close() silently no-ops for windows
+ * created by chrome.windows.create (which is how this popup is opened), so remove
+ * the window by id instead, falling back to window.close().
+ */
+async function closeWindow() {
+  try {
+    const win = await chrome.windows.getCurrent();
+    await chrome.windows.remove(win.id);
+  } catch {
+    window.close();
+  }
+}
+
 /** Download a blob as a file, waiting for completion before returning. */
 async function downloadBlob(blob, filename) {
   const blobUrl = URL.createObjectURL(blob);
@@ -88,20 +102,24 @@ async function downloadBlob(blob, filename) {
   URL.revokeObjectURL(blobUrl);
 }
 
-// Track whether we loaded an intercepted file (to clean up on close)
-let loadedInterceptedFile = false;
-window.addEventListener('beforeunload', () => {
-  if (loadedInterceptedFile) {
-    chrome.runtime.sendMessage({ action: 'conversion_complete' });
-  }
-});
-
 // ---- Initialize: check for pending file or show drop zone ----
 (async function init() {
-  // Check if there's a pending intercepted download in IndexedDB
+  // Session-restore guard: the service worker sets swSessionActive whenever it opens
+  // a popup. If it's missing, the browser restored this window on relaunch (session
+  // storage is wiped on restart) — close it so stale converter windows don't reappear.
+  try {
+    const { swSessionActive } = await chrome.storage.session.get('swSessionActive');
+    if (!swSessionActive) { closeWindow(); return; }
+  } catch {
+    // storage.session unavailable — proceed normally
+  }
+
+  // Check if there's a pending intercepted download in IndexedDB.
+  // Don't clear the store here: clearFile() wipes the whole store, so clearing on
+  // load would race a near-simultaneous second download and erase its file before
+  // its window loads. Stale files are instead dropped on manual open and onStartup.
   const fileData = await self.MWU1.loadFile();
   if (fileData) {
-    loadedInterceptedFile = true;
     await processArrayBuffer(fileData.arrayBuffer, fileData.metadata?.originalName || 'model');
   } else {
     // No pending download — show the drop zone for manual file selection
@@ -165,7 +183,7 @@ function showMappingUI(filaments) {
 }
 
 // ---- Already U1 actions ----
-document.getElementById('btn-close-u1').addEventListener('click', () => window.close());
+document.getElementById('btn-close-u1').addEventListener('click', () => closeWindow());
 document.getElementById('btn-adjust-anyway').addEventListener('click', () => {
   if (cachedAnalysis) showMappingUI(cachedAnalysis.filaments);
 });
@@ -176,8 +194,9 @@ document.getElementById('btn-u1-download').addEventListener('click', async () =>
   try {
     const blob = await parsedZip.generateAsync({ type: 'blob', mimeType: 'application/octet-stream' });
     await downloadBlob(blob, `${originalName}.3mf`);
-    window.close();
-  } finally {
+    closeWindow();
+  } catch (err) {
+    showConvertError(err.message || 'Download failed.');
     btn.disabled = false;
   }
 });
@@ -214,8 +233,8 @@ function handleLocalFile(file) {
 }
 
 // ---- Error close / Cancel ----
-document.getElementById('btn-close-error').addEventListener('click', () => window.close());
-document.getElementById('btn-cancel').addEventListener('click', () => window.close());
+document.getElementById('btn-close-error').addEventListener('click', () => closeWindow());
+document.getElementById('btn-cancel').addEventListener('click', () => closeWindow());
 
 // Download original (unconverted) file
 btnOriginal.addEventListener('click', async () => {
@@ -224,7 +243,9 @@ btnOriginal.addEventListener('click', async () => {
   try {
     const blob = await parsedZip.generateAsync({ type: 'blob', mimeType: 'application/octet-stream' });
     await downloadBlob(blob, `${originalName}.3mf`);
-  } finally {
+    closeWindow();
+  } catch (err) {
+    showConvertError(err.message || 'Download failed.');
     btnOriginal.disabled = false;
   }
 });
@@ -654,7 +675,7 @@ btnConvert.addEventListener('click', async () => {
 
     await downloadBlob(blob, `${originalName}-U1.3mf`);
     setConverting(false);
-    window.close();
+    closeWindow();
   } catch (err) {
     showConvertError(err.message || 'Conversion failed.');
     setConverting(false);

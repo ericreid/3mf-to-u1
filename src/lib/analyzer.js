@@ -12,12 +12,15 @@ self.MWU1 = self.MWU1 || {};
  * @returns {Promise<{filaments: Array<{id: string, color: string, type: string}>, hasSupport: boolean, zip: JSZip}>}
  */
 self.MWU1.analyze = async function(arrayBuffer) {
-  const MAX_UNCOMPRESSED = 500 * 1024 * 1024;
   const MAX_ENTRIES = 2000;
+  // High zip-bomb backstop only — far above any legitimate detailed model (those are
+  // well under 1 GB uncompressed). Read from the zip's central directory, so it costs
+  // nothing and never decompresses anything. Stops a tiny crafted file from inflating
+  // to gigabytes and crashing the tab; does not reject real large models.
+  const MAX_UNCOMPRESSED = 2 * 1024 * 1024 * 1024; // 2 GB
 
   const zip = await JSZip.loadAsync(arrayBuffer);
 
-  // ZIP bomb protection
   const entries = Object.values(zip.files);
   if (entries.length > MAX_ENTRIES) throw new Error(`ZIP has too many entries (${entries.length})`);
   const totalUncompressed = entries.reduce((s, f) => s + (f._data?.uncompressedSize ?? 0), 0);
@@ -201,9 +204,11 @@ async function parse3mfBaseMaterials(zip, normalizeColor) {
   const modelFile = zip.file('3D/3dmodel.model');
   if (!modelFile) return [];
 
-  // Only read the first 100KB — basematerials are near the top, geometry is huge
-  const fullStr = await modelFile.async('string');
-  const headerStr = fullStr.slice(0, 100000);
+  // Only decode the first 100KB — basematerials are near the top, geometry is huge.
+  // Decode from bytes (not async('string')) so a multi-hundred-MB model XML doesn't
+  // blow the V8 max-string-length limit just to read its header.
+  const bytes = await modelFile.async('uint8array');
+  const headerStr = new TextDecoder('utf-8').decode(bytes.subarray(0, 100000));
 
   const doc = new DOMParser().parseFromString(headerStr, 'text/xml');
 
